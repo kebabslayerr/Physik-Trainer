@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physik-Trainer: Generator & Motor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+        }
+
+        .view { display: none; }
+        .view.active { display: block; }
+
+        .magnet-animation {
+            transition: transform 0.1s linear;
+        }
+
+        .pulse-yellow {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { filter: drop-shadow(0 0 5px rgba(253, 224, 71, 0.5)); }
+            50% { filter: drop-shadow(0 0 20px rgba(253, 224, 71, 1)); }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-2xl mx-auto bg-white rounded-[2rem] shadow-2xl border-4 border-white overflow-hidden">
+        
+        <!-- Header -->
+        <div class="bg-slate-900 p-6 text-white flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-black uppercase tracking-tighter">Physik-Trainer</h1>
+                <p id="sub-header" class="text-[10px] text-slate-400 font-bold uppercase tracking-widest text-blue-400">Arbeitsblatt-Simulator</p>
+            </div>
+            <div id="progress-dots" class="flex gap-1">
+                <div class="h-1.5 w-4 rounded-full bg-blue-500"></div>
+                <div class="h-1.5 w-4 rounded-full bg-slate-700"></div>
+                <div class="h-1.5 w-4 rounded-full bg-slate-700"></div>
+                <div class="h-1.5 w-4 rounded-full bg-slate-700"></div>
+            </div>
+        </div>
+
+        <div class="p-6 md:p-10 min-h-[500px]">
+            
+            <!-- MENU VIEW -->
+            <div id="view-menu" class="view active text-center space-y-8 animate-in zoom-in">
+                <div class="w-20 h-20 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center shadow-xl shadow-blue-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                </div>
+                <div class="space-y-2">
+                    <h2 class="text-3xl font-black text-slate-900">Alles-Check</h2>
+                    <p class="text-slate-500 max-w-sm mx-auto italic text-sm">Ich habe alle Aufgaben deiner Arbeitsblätter in dieses Tool gepackt.</p>
+                </div>
+                <button onclick="showChapter(0)" class="w-full py-5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-3 shadow-lg">
+                    LERNEN STARTEN
+                </button>
+            </div>
+
+            <!-- EXPLAIN VIEW -->
+            <div id="view-explain" class="view space-y-6">
+                <div class="flex items-center gap-3">
+                    <div id="chapter-num" class="bg-blue-100 p-2 rounded-lg text-blue-600 font-black">01</div>
+                    <h2 id="chapter-title" class="text-2xl font-black text-slate-900">Kapitel Titel</h2>
+                </div>
+
+                <!-- Illustration Area -->
+                <div id="illustration-box" class="bg-slate-50 rounded-3xl p-6 border-2 border-dashed border-slate-200 flex flex-col items-center justify-center min-h-[220px]">
+                    <!-- Wird per JS gefüllt -->
+                </div>
+
+                <div id="chapter-content" class="space-y-4">
+                    <!-- Wird per JS gefüllt -->
+                </div>
+
+                <button onclick="startQuiz()" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-black flex items-center justify-center gap-2">
+                    ZUM THEMEN-QUIZ
+                </button>
+            </div>
+
+            <!-- QUIZ VIEW -->
+            <div id="view-quiz" class="view space-y-6">
+                <div class="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    <span id="quiz-header">Kapitel • Frage 1/2</span>
+                    <span id="score-display">Punkte: 0</span>
+                </div>
+                <h2 id="quiz-question" class="text-xl font-black text-slate-800 leading-tight">Frage Text?</h2>
+                <div id="quiz-options" class="space-y-3">
+                    <!-- Buttons per JS -->
+                </div>
+
+                <div id="quiz-feedback" class="hidden p-5 bg-blue-50 rounded-2xl border border-blue-100">
+                    <div class="flex items-center gap-3 mb-2">
+                        <span id="feedback-icon"></span>
+                        <span id="feedback-text" class="font-black uppercase text-sm">Feedback</span>
+                    </div>
+                    <p id="feedback-why" class="text-xs text-blue-800 leading-relaxed italic">Erklärung...</p>
+                    <button onclick="nextStep()" class="w-full mt-4 py-3 bg-blue-600 text-white rounded-xl font-black text-sm">WEITER</button>
+                </div>
+            </div>
+
+            <!-- RESULT VIEW -->
+            <div id="view-result" class="view text-center py-10 space-y-8">
+                <div class="w-24 h-24 bg-yellow-400 rounded-full mx-auto flex items-center justify-center shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+                </div>
+                <div>
+                    <h2 class="text-3xl font-black text-slate-900 tracking-tight uppercase">Physik-Master!</h2>
+                    <p class="text-slate-500 mt-2 italic">Du hast alle Arbeitsblätter erfolgreich durchgearbeitet.</p>
+                    <div id="final-score" class="text-5xl font-black text-blue-600 mt-6">0 / 8</div>
+                </div>
+                <button onclick="location.reload()" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-black">NEUSTART</button>
+            </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="bg-slate-50 p-6 border-t border-slate-100 flex items-center gap-4">
+            <div class="bg-white p-2 rounded-xl shadow-sm border border-slate-200 shrink-0 text-blue-500">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </div>
+            <p class="text-[10px] text-slate-400 font-bold uppercase leading-tight tracking-tight">
+                Generator = Bewegung → Strom | Motor = Strom → Bewegung.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        let currentChapter = 0;
+        let currentQuizIdx = 0;
+        let score = 0;
+        let rotation = 0;
+        let isRotating = false;
+        let rotationInterval;
+
+        const chapters = [
+            {
+                title: "Magnetismus nach Bedarf",
+                content: [
+                    { label: "Oersted", text: "H.C. Oersted entdeckte 1820: Stromfluss (Elektronenströmung) erzeugt immer ein Magnetfeld rund um einen Leiter." },
+                    { label: "Spule", text: "Wickelt man den Draht zu einer Spule, wird das Magnetfeld viel stärker. Die Pole liegen an den Enden." },
+                    { label: "Stärke", text: "Mehr Windungen, mehr Strom und ein Eisenkern machen den Magneten stärker. Ein Holzkern bewirkt nichts!" }
+                ],
+                quiz: [
+                    {
+                        q: "Was bewirkt Elektronenströmung in einem Leiter?",
+                        options: ["Ein Magnetfeld", "Einen Windstoß", "Wasserdampf"],
+                        correct: 0,
+                        why: "Das ist die Kernentdeckung von Oersted: Strom erzeugt Magnetismus!"
+                    },
+                    {
+                        q: "Wie wird ein Elektromagnet NICHT stärker?",
+                        options: ["Höhere Windungszahl", "Ein Eisenkern", "Ein Holzkern"],
+                        correct: 2,
+                        why: "Holz ist nicht magnetisierbar und verstärkt das Feld deshalb nicht."
+                    }
+                ]
+            },
+            {
+                title: "Spannung & Induktion",
+                content: [
+                    { label: "Vorgang", text: "Wenn sich ein Magnetfeld in einer Spule ändert (durch Bewegung), werden Elektronen 'angeschubst'." },
+                    { label: "Druck", text: "Es entsteht ein elektrischer Druckunterschied. Das nennen wir elektrische Spannung." },
+                    { label: "Faktoren", text: "Mehr Spannung durch: Stärkeren Magneten, mehr Windungen oder SCHNELLERE Bewegung." }
+                ],
+                quiz: [
+                    {
+                        q: "Wann wird Spannung induziert?",
+                        options: ["Wenn der Magnet stillsteht", "Wenn sich das Magnetfeld ändert", "Wenn die Spule warm ist"],
+                        correct: 1,
+                        why: "Nur die Änderung (Bewegung) bewirkt Induktion (Arbeitsblatt 2)."
+                    },
+                    {
+                        q: "Was bewirkt der elektrische 'Druckunterschied'?",
+                        options: ["Magnetismus", "Elektrische Spannung", "Licht"],
+                        correct: 1,
+                        why: "Spannung ist physikalisch gesehen ein Unterschied im elektrischen Potenzial (Druck)."
+                    }
+                ]
+            },
+            {
+                title: "Der Generator",
+                content: [
+                    { label: "Wandler", text: "Ein Generator macht aus mechanischer Energie (Bewegung) elektrische Energie (Strom)." },
+                    { label: "Wechselstrom", text: "Durch die Drehung kommen mal Nord- und mal Südpol vorbei. Die Elektronen ändern ständig die Richtung." },
+                    { label: "Aufbau", text: "Rotor = beweglicher Teil (Dauermagnet), Stator = fester Teil (Spule)." }
+                ],
+                quiz: [
+                    {
+                        q: "Welche 3 Aussagen zum Generator stimmen?",
+                        options: ["Magnetfeld ändert sich, Spannung induziert, Magnet beweglich", "Gleichstrom entsteht, Magnet steht still", "Generator macht aus Strom Hitze"],
+                        correct: 0,
+                        why: "Das sind die Kernpunkte der elektromagnetischen Induktion im Generator."
+                    },
+                    {
+                        q: "Wie nennt man Strom, der ständig die Richtung ändert?",
+                        options: ["Gleichstrom", "Magnetstrom", "Wechselstrom"],
+                        correct: 2,
+                        why: "Wechselstrom (AC) wechselt periodisch seine Fließrichtung."
+                    }
+                ]
+            },
+            {
+                title: "Der Elektromotor",
+                content: [
+                    { label: "Prinzip", text: "Strom in einer Spule erzeugt ein Magnetfeld. Durch Abstoßung und Anziehung beginnt die Drehung." },
+                    { label: "Polwender", text: "Damit der Motor nicht stehen bleibt, muss die Stromrichtung im richtigen Moment getauscht werden." },
+                    { label: "Bauteile", text: "Ein Motor besteht aus Dauermagnet, Elektromagnet (Spule) und Polwender." }
+                ],
+                quiz: [
+                    {
+                        q: "Was sorgt für die Kraft im Motor?",
+                        options: ["Anziehung und Abstoßung der Pole", "Windkraft", "Reibung"],
+                        correct: 0,
+                        why: "Magnetfelder interagieren miteinander und erzeugen so eine mechanische Kraft."
+                    },
+                    {
+                        q: "Was ist die Aufgabe des Polwenders?",
+                        options: ["Strom speichern", "Richtung der Elektronenströmung ändern", "Motor ausschalten"],
+                        correct: 1,
+                        why: "Nur durch das Umpolen dreht sich der Motor kontinuierlich weiter."
+                    }
+                ]
+            }
+        ];
+
+        function switchView(viewId) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+        }
+
+        function showChapter(idx) {
+            currentChapter = idx;
+            currentQuizIdx = 0;
+            switchView('view-explain');
+            
+            document.getElementById('chapter-num').innerText = '0' + (idx + 1);
+            document.getElementById('chapter-title').innerText = chapters[idx].title;
+            
+            // Content
+            const contentBox = document.getElementById('chapter-content');
+            contentBox.innerHTML = chapters[idx].content.map(item => `
+                <div class="flex gap-4">
+                    <span class="text-blue-600 font-black text-xs pt-1 tracking-tighter shrink-0">${item.label}:</span>
+                    <p class="text-sm text-slate-600 font-medium leading-relaxed">${item.text}</p>
+                </div>
+            `).join('');
+
+            // Illustration
+            updateIllustration();
+            updateProgress();
+        }
+
+        function updateIllustration() {
+            const box = document.getElementById('illustration-box');
+            if (currentChapter === 0) {
+                box.innerHTML = `
+                    <div class="flex flex-col items-center gap-2">
+                        <div class="flex gap-1">
+                            ${[1,2,3,4].map(() => `<div class="w-6 h-10 border-4 border-amber-600 rounded-md -ml-1"></div>`).join('')}
+                        </div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">SPULE VERSTÄRKT DAS FELD</p>
+                    </div>
+                `;
+            } else if (currentChapter === 1) {
+                box.innerHTML = `
+                    <div class="relative flex flex-col items-center gap-4">
+                        <div id="magnet-anim" class="magnet-animation">
+                            <div class="flex h-6 w-16 shadow-md">
+                                <div class="flex-1 bg-red-600 rounded-l font-bold text-[8px] flex items-center justify-center text-white">N</div>
+                                <div class="flex-1 bg-blue-600 rounded-r font-bold text-[8px] flex items-center justify-center text-white">S</div>
+                            </div>
+                        </div>
+                        <button onmousedown="startSim()" onmouseup="stopSim()" ontouchstart="startSim()" ontouchend="stopSim()" class="px-4 py-1.5 bg-slate-800 text-white rounded-full text-[10px] font-bold uppercase">Magnet bewegen</button>
+                        <div id="zap-icon" class="hidden absolute top-0 right-0 text-yellow-500 pulse-yellow">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                        </div>
+                    </div>
+                `;
+            } else {
+                box.innerHTML = `
+                    <div class="flex flex-col items-center gap-4">
+                        <div id="rotating-magnet" class="w-20 h-6 flex shadow-lg magnet-animation">
+                            <div class="flex-1 bg-red-600 rounded-l text-[8px] font-bold flex items-center justify-center text-white">N</div>
+                            <div class="flex-1 bg-blue-600 rounded-r text-[8px] font-bold flex items-center justify-center text-white">S</div>
+                        </div>
+                        <button onclick="toggleRotation()" id="rot-btn" class="px-4 py-1.5 rounded-full text-[10px] font-bold text-white bg-emerald-600 uppercase">Start Drehung</button>
+                    </div>
+                `;
+            }
+        }
+
+        function startSim() {
+            document.getElementById('magnet-anim').style.transform = 'translateX(20px)';
+            document.getElementById('zap-icon').classList.remove('hidden');
+        }
+        function stopSim() {
+            document.getElementById('magnet-anim').style.transform = 'translateX(-20px)';
+            document.getElementById('zap-icon').classList.add('hidden');
+        }
+
+        function toggleRotation() {
+            isRotating = !isRotating;
+            const btn = document.getElementById('rot-btn');
+            if (isRotating) {
+                btn.innerText = 'STOPP';
+                btn.classList.replace('bg-emerald-600', 'bg-red-500');
+                rotationInterval = setInterval(() => {
+                    rotation = (rotation + 10) % 360;
+                    document.getElementById('rotating-magnet').style.transform = `rotate(${rotation}deg)`;
+                }, 40);
+            } else {
+                btn.innerText = 'START DREHUNG';
+                btn.classList.replace('bg-red-500', 'bg-emerald-600');
+                clearInterval(rotationInterval);
+            }
+        }
+
+        function startQuiz() {
+            if (isRotating) toggleRotation();
+            currentQuizIdx = 0;
+            updateQuiz();
+            switchView('view-quiz');
+        }
+
+        function updateQuiz() {
+            const q = chapters[currentChapter].quiz[currentQuizIdx];
+            document.getElementById('quiz-header').innerText = `${chapters[currentChapter].title} • Frage ${currentQuizIdx + 1}/2`;
+            document.getElementById('quiz-question').innerText = q.q;
+            document.getElementById('score-display').innerText = `Punkte: ${score}`;
+            document.getElementById('quiz-feedback').classList.add('hidden');
+            
+            const optionsBox = document.getElementById('quiz-options');
+            optionsBox.innerHTML = q.options.map((opt, i) => `
+                <button onclick="handleAnswer(${i})" class="quiz-btn w-full p-5 rounded-2xl text-left border-2 border-slate-100 hover:border-blue-500 hover:bg-blue-50 transition-all font-bold text-sm">
+                    ${opt}
+                </button>
+            `).join('');
+        }
+
+        function handleAnswer(idx) {
+            const q = chapters[currentChapter].quiz[currentQuizIdx];
+            const isCorrect = idx === q.correct;
+            
+            if (isCorrect) score++;
+            
+            document.querySelectorAll('.quiz-btn').forEach((btn, i) => {
+                btn.disabled = true;
+                if (i === q.correct) btn.className = "w-full p-5 rounded-2xl text-left border-2 border-emerald-500 bg-emerald-50 text-emerald-800 font-bold text-sm";
+                else if (i === idx) btn.className = "w-full p-5 rounded-2xl text-left border-2 border-red-500 bg-red-50 text-red-800 font-bold text-sm opacity-50";
+                else btn.className = "w-full p-5 rounded-2xl text-left border-2 border-slate-100 opacity-30 font-bold text-sm";
+            });
+
+            const feedbackBox = document.getElementById('quiz-feedback');
+            feedbackBox.classList.remove('hidden');
+            document.getElementById('feedback-text').innerText = isCorrect ? 'Richtig!' : 'Falsch';
+            document.getElementById('feedback-text').className = isCorrect ? 'font-black uppercase text-sm text-emerald-600' : 'font-black uppercase text-sm text-red-600';
+            document.getElementById('feedback-why').innerText = q.why;
+            document.getElementById('feedback-icon').innerHTML = isCorrect ? 
+                '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>' :
+                '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+        }
+
+        function nextStep() {
+            if (currentQuizIdx < 1) {
+                currentQuizIdx++;
+                updateQuiz();
+            } else {
+                if (currentChapter < 3) {
+                    switchView('view-chapter_end');
+                } else {
+                    document.getElementById('final-score').innerText = `${score} / 8`;
+                    switchView('view-result');
+                }
+            }
+        }
+
+        // Add dynamically
+        const endView = `
+            <div id="view-chapter_end" class="view text-center py-10 space-y-6">
+                <div class="w-20 h-20 bg-emerald-100 rounded-full mx-auto flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-black text-slate-900">Thema fertig!</h2>
+                    <p class="text-slate-500 mt-2">Du hast das Wissen von diesem Arbeitsblatt gesichert.</p>
+                </div>
+                <button onclick="showChapter(currentChapter + 1)" class="w-full py-4 bg-blue-600 text-white rounded-2xl font-black flex items-center justify-center gap-2">
+                    NÄCHSTES THEMA
+                </button>
+            </div>
+        `;
+        document.querySelector('.p-6.md\\:p-10').innerHTML += endView;
+
+        function updateProgress() {
+            const dots = document.getElementById('progress-dots');
+            dots.innerHTML = [0,1,2,3].map(i => `
+                <div class="h-1.5 w-4 rounded-full ${i <= currentChapter ? 'bg-blue-500' : 'bg-slate-700'}"></div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>
